@@ -1,0 +1,7 @@
+.env
+data/
+results/*.jsonl
+__pycache__/
+.pytest_cache/
+web/node_modules/
+web/.next/

@@ -1,0 +1,28 @@
+{
+  "description": "Published numbers extracted from papers for Agent X-Ray literature mode. All GSM8K unless noted. Executor model gpt-4o-mini in both sources.",
+  "sources": {
+    "aflow": "AFlow (ICLR 2025), Table 1, papers/2-automated-design/AFlow.pdf p.8",
+    "maas": "MaAS (ICML 2025), Tables 1&3, papers/2-automated-design/MaAS.pdf p.6-7"
+  },
+  "aflow_table1_gsm8k": {
+    "IO": 92.7, "CoT": 92.4, "CoT_SC_5": 92.7, "MedPrompt": 90.0,
+    "MultiPersona": 92.8, "SelfRefine": 89.6, "ADAS": 90.8, "AFlow": 93.5,
+    "avg_6bench": {"IO": 72.8, "CoT": 74.7, "CoT_SC_5": 76.0, "ADAS": 67.2, "AFlow": 80.3}
+  },
+  "maas_table1_gsm8k": {
+    "Vanilla": 87.45, "CoT": 87.10, "SC_CoTx5": 87.57, "GPTSwarm": 89.14,
+    "ADAS": 86.12, "AgentSquare": 87.62, "AFlow": 91.16, "MaAS": 92.30
+  },
+  "maas_table3_math_inference": {
+    "note": "MATH benchmark, accuracy vs inference cost",
+    "AFlow": {"acc": 51.28, "usd": 1.66}, "GPTSwarm": {"acc": 47.88, "usd": 0.93},
+    "MaAS": {"acc": 51.82, "usd": 0.42}, "LLM_Debate": {"acc": 48.54, "usd": 6.76}
+  },
+  "audit_observations": [
+    "AFlow's GSM8K gain over plain IO is +0.8pp in its own Table 1 (93.5 vs 92.7); CoT-SC(5) already matches IO exactly.",
+    "Same model, same benchmark: AFlow paper says IO=92.7, MaAS paper says Vanilla=87.45 — a 5.3pp baseline discrepancy between papers.",
+    "AFlow's replication of ADAS scores BELOW plain IO on 6-bench average (67.2 vs 72.8).",
+    "MaAS's own text: AFlow/ADAS improve over vanilla by 'only 3.35% and 2.04% on average' on GAIA.",
+    "None of the tables report variance/CIs for these <1-3pp margins; AFlow tests 3 times and reports the average, MaAS temperature=1."
+  ]
+}
