@@ -1299,10 +1299,10 @@
   "seed": 42,
   "union_items": 600
  },
- "status": "ai_proposed_pending_human_confirmation",
+ "status": "human_confirmed",
  "adjudication": {
   "method": "Two independent AI adjudicators (Claude Fable 5, GPT Codex) solved each problem from scratch; agreement 69/75; disagreements resolved with documented reasons (results/audit_prepass_merged.json).",
-  "human_confirmation": "PENDING \u2014 required by preregistration before publication",
+  "human_confirmation": "CONFIRMED by author review, 2026-07-19 \u2014 all 75 verdicts checked, 5 flagged disagreement items individually adjudicated",
   "counts": {
    "gold_correct": 49,
    "scorer_error": 21,
