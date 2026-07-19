@@ -2,6 +2,7 @@ import asyncio
 import json
 import threading
 import time
+from collections import Counter
 from pathlib import Path
 
 from core.experiment import ExperimentConfig
@@ -29,6 +30,16 @@ class SlowConcurrencyMock(MockProvider):
                 self.active -= 1
 
 
+class RecordingVariantMock(MockProvider):
+    def __init__(self):
+        super().__init__(seed=42, model="mock-math500")
+        self.variants = Counter()
+
+    def generate(self, *args, **kwargs):
+        self.variants[kwargs["variant"]] += 1
+        return super().generate(*args, **kwargs)
+
+
 def test_async_provider_calls_respect_concurrency_bound():
     provider = SlowConcurrencyMock()
     problem = load_math500(n=1, seed=42, offline_mock=True)[0]
@@ -53,8 +64,10 @@ def test_math_study_calibrates_repeats_and_reports_ops_blocks():
     results_dir = Path(__file__).parent
     checkpoint = results_dir / "checkpoint__mathstudy_test.jsonl"
     ledger = results_dir / "ledger__mathstudy_test.jsonl"
+    calibration = results_dir / "calibration_math500.json"
     checkpoint.unlink(missing_ok=True)
     ledger.unlink(missing_ok=True)
+    calibration.unlink(missing_ok=True)
     problems = load_math500(n=3, seed=7, offline_mock=True)
     experiment = MathStudyExperiment(
         MockProvider(seed=7, model="mock-math500"),
@@ -71,6 +84,9 @@ def test_math_study_calibrates_repeats_and_reports_ops_blocks():
         assert results["study"]["calibration"]["n"] == 3
         assert results["study"]["calibration"]["sc_budget_n"] >= 1
         assert results["study"]["calibration"]["escalate_sc_extra_samples"] >= 1
+        persisted = json.loads(calibration.read_text(encoding="utf-8"))
+        assert persisted["sc_budget_n"] == results["study"]["calibration"]["sc_budget_n"]
+        assert persisted["model"] == "mock-math500"
         assert all(sum(block.values()) == 0 for block in results["missingness"].values())
         assert all(sum(block.values()) == 6 for block in results["scorer_breakdown"].values())
         rows = checkpoint.read_text(encoding="utf-8").splitlines()
@@ -87,6 +103,48 @@ def test_math_study_calibrates_repeats_and_reports_ops_blocks():
     finally:
         checkpoint.unlink(missing_ok=True)
         ledger.unlink(missing_ok=True)
+        calibration.unlink(missing_ok=True)
+
+
+def test_filtered_systems_reuse_persisted_calibration_without_calibration_calls():
+    results_dir = Path(__file__).parent
+    artifacts = [
+        results_dir / "checkpoint__filtered_math_test.jsonl",
+        results_dir / "ledger__filtered_math_test.jsonl",
+        results_dir / "calibration_math500.json",
+    ]
+    for path in artifacts:
+        path.unlink(missing_ok=True)
+    artifacts[-1].write_text(
+        json.dumps(
+            {
+                "model": "mock-math500",
+                "sc_budget_n": 4,
+                "escalate_sc_extra_samples": 6,
+                "n": 20,
+            }
+        ),
+        encoding="utf-8",
+    )
+    provider = RecordingVariantMock()
+    experiment = MathStudyExperiment(
+        provider,
+        results_dir,
+        ExperimentConfig(sleep_seconds=0, run_id="_filtered_math_test"),
+        concurrency=4,
+        systems=("full", "sc@budget"),
+    )
+    try:
+        results = asyncio.run(experiment.run(load_math500(n=1, seed=42, offline_mock=True)))
+        assert set(results["variants"]) == {"full", "sc@budget"}
+        assert results["study"]["calibration"]["reused"] is True
+        assert results["study"]["calibration"]["sc_budget_n"] == 4
+        assert provider.variants["sc@budget"] == 4
+        assert provider.variants["full"] == 10
+        assert set(provider.variants) == {"full", "sc@budget"}
+    finally:
+        for path in artifacts:
+            path.unlink(missing_ok=True)
 
 
 def test_math_aggregation_reports_missingness_by_system():

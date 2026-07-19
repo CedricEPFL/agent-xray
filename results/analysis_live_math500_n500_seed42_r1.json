@@ -1,0 +1,41 @@
+{
+  "acc_a": 0.9354838709677419,
+  "acc_b": 0.9314516129032258,
+  "bootstrap_ci": {
+    "level": 0.95,
+    "lower": -0.024193548387096774,
+    "n_boot": 10000,
+    "upper": 0.02832661290322434
+  },
+  "delta": 0.004032258064516129,
+  "discordant": {
+    "b": 6,
+    "c": 5
+  },
+  "discordant_b": 6,
+  "discordant_c": 5,
+  "escalated_only": false,
+  "exclusion_reasons": {
+    "both_scorers_failed": 14
+  },
+  "exclusions": 14,
+  "mcnemar_p": 1.0,
+  "missingness": {
+    "eligible_problem_ids": 262,
+    "paired_before_exclusions": 262,
+    "system_a_missing": 0,
+    "system_a_scorer_failed": 15,
+    "system_b_missing": 0,
+    "system_b_scorer_failed": 15,
+    "unpaired": 0
+  },
+  "n_pairs": 248,
+  "repeat": 0,
+  "run_id": "live_math500_n500_seed42_r1",
+  "stratum_levels": [
+    4,
+    5
+  ],
+  "system_a": "full",
+  "system_b": "sc@budget"
+}

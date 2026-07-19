@@ -3,7 +3,7 @@ import { compactUsd, finite, percent } from "./format";
 
 type Point = { name: string; accuracy: number; cost: number; lower: number; upper: number; baseline: boolean };
 
-const BASELINES = new Set(["cot@1", "sc@3", "sc@5"]);
+const BASELINES = new Set(["cot@1", "sc@3", "sc@5", "sc@9", "sc@budget", "escalate_sc"]);
 
 export function ParetoChart({ variants }: { variants: Record<string, VariantResult> }) {
   const points: Point[] = Object.entries(variants).flatMap(([name, item]) => {

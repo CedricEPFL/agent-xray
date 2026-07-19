@@ -12,7 +12,7 @@ from .gsm8k import load_gsm8k
 from .math500 import load_math500
 from .providers import GeminiProvider, MockProvider
 from .report import write_reports
-from .study_v2 import MathStudyExperiment
+from .study_v2 import MATH_SYSTEMS, MathStudyExperiment
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -23,6 +23,10 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--n", type=int, default=50, help="number of fixed-seed problems (default: 50)")
     parser.add_argument("--seed", type=int, default=42, help="sampling/mock seed (default: 42)")
     parser.add_argument("--study", choices=("gsm8k", "math500"), default="gsm8k")
+    parser.add_argument(
+        "--systems",
+        help="comma-separated MATH-500 systems to run (default: complete matrix)",
+    )
     parser.add_argument("--concurrency", type=int, default=8, help="maximum concurrent provider calls (default: 8)")
     parser.add_argument("--repeats", type=int, default=1, help="stochastic repeats per item (default: 1)")
     parser.add_argument(
@@ -69,6 +73,8 @@ def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     root = Path(__file__).resolve().parents[1]
     is_mock = bool(args.mock)
+    if args.systems and args.study != "math500":
+        raise SystemExit("--systems is only valid with --study math500")
     if args.aggregate_only:
         if args.study != "gsm8k":
             raise SystemExit("--aggregate-only currently targets the GSM8K pilot checkpoint")
@@ -83,6 +89,15 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     if args.study == "math500":
+        systems = None
+        if args.systems:
+            requested = [name.strip() for name in args.systems.split(",") if name.strip()]
+            invalid = set(requested) - set(MATH_SYSTEMS)
+            if not requested:
+                raise SystemExit("--systems requires at least one system")
+            if invalid:
+                raise SystemExit(f"Unknown MATH systems: {', '.join(sorted(invalid))}")
+            systems = [name for name in MATH_SYSTEMS if name in requested]
         provider = (
             MockProvider(seed=args.seed, model="mock-math500")
             if is_mock
@@ -109,6 +124,7 @@ def main(argv: list[str] | None = None) -> int:
             concurrency=args.concurrency,
             repeats=args.repeats,
             budget_guard=guard,
+            systems=systems,
         )
         try:
             results = asyncio.run(study.run(problems))

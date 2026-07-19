@@ -1,0 +1,11 @@
+{
+  "cot_sample_mean_cost_usd": 0.0006818249999999999,
+  "escalate_sc_extra_samples": 17,
+  "escalate_structure_mean_incremental_cost_usd": 0.011607166666666667,
+  "full_mean_cost_usd": 0.0079343875,
+  "model": "gemini-3.1-flash-lite",
+  "n": 20,
+  "sc_budget_n": 12,
+  "source_results_file": "results_math500_final.json",
+  "source_run_id": "live_math500_n500_seed42_r1"
+}

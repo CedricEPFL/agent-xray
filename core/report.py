@@ -22,7 +22,8 @@ def render_report(results: Mapping[str, Any]) -> str:
     study = results.get("study", "gsm8k")
     study_name = study.get("name") if isinstance(study, Mapping) else study
     is_math = study_name == "math500"
-    variant_order = MATH_SYSTEM_ORDER if is_math else VARIANT_ORDER
+    configured_order = MATH_SYSTEM_ORDER if is_math else VARIANT_ORDER
+    variant_order = tuple(name for name in configured_order if name in variants)
     requested_n = metadata.get("requested_sample_size", metadata["sample_size"])
     completed_n = metadata.get("completed_sample_size", metadata["sample_size"])
     partial_run = bool(metadata.get("partial_run", False))

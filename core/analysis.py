@@ -90,6 +90,7 @@ def primary_contrast(
     system_b: str = "sc@budget",
     stratum_levels: set[int] | frozenset[int] = frozenset({4, 5}),
     repeat: int = 0,
+    escalated_only: bool = False,
 ) -> dict[str, Any]:
     """Compute the preregistered paired contrast from one checkpoint."""
 
@@ -116,7 +117,14 @@ def primary_contrast(
 
     ids_a = set(by_system[system_a])
     ids_b = set(by_system[system_b])
-    paired_ids = sorted(ids_a & ids_b)
+    all_paired_ids = sorted(ids_a & ids_b)
+    paired_ids = [
+        problem_id
+        for problem_id in all_paired_ids
+        if not escalated_only
+        or bool(by_system[system_a][problem_id].get("escalated", False))
+        or bool(by_system[system_b][problem_id].get("escalated", False))
+    ]
     both_failed_ids = [
         problem_id
         for problem_id in paired_ids
@@ -150,12 +158,16 @@ def primary_contrast(
             for problem_id in paired_ids
         ),
     }
+    if escalated_only:
+        missingness["paired_before_escalation_filter"] = len(all_paired_ids)
+        missingness["not_escalated"] = len(all_paired_ids) - len(paired_ids)
     result: dict[str, Any] = {
         "run_id": run_id,
         "system_a": system_a,
         "system_b": system_b,
         "stratum_levels": sorted(levels),
         "repeat": repeat,
+        "escalated_only": escalated_only,
         "n_pairs": len(items),
         "acc_a": sum(item[0] for item in items) / len(items) if items else None,
         "acc_b": sum(item[1] for item in items) / len(items) if items else None,
@@ -194,6 +206,11 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--levels", type=_parse_levels, default={4, 5})
     parser.add_argument("--repeat", type=int, default=0)
     parser.add_argument(
+        "--escalated-only",
+        action="store_true",
+        help="restrict to pairs where either system row escalated",
+    )
+    parser.add_argument(
         "--results-dir",
         type=Path,
         default=Path(__file__).resolve().parents[1] / "results",
@@ -216,10 +233,12 @@ def _compact_report(result: dict[str, Any]) -> str:
     else:
         metrics = "No analyzable pairs"
         test = "McNemar and bootstrap unavailable"
+    slice_label = "; escalated-only" if result.get("escalated_only") else ""
     return "\n".join(
         (
             f"Primary contrast: {result['system_a']} - {result['system_b']}",
-            f"Levels={','.join(map(str, result['stratum_levels']))}; repeat={result['repeat']}; n={result['n_pairs']}",
+            f"Levels={','.join(map(str, result['stratum_levels']))}; repeat={result['repeat']}"
+            f"{slice_label}; n={result['n_pairs']}",
             metrics,
             test,
             f"Exclusions (both scorers failed)={result['exclusions']}; unpaired={result['missingness']['unpaired']}",
@@ -236,6 +255,7 @@ def main(argv: list[str] | None = None) -> int:
         system_b=args.system_b,
         stratum_levels=args.levels,
         repeat=args.repeat,
+        escalated_only=args.escalated_only,
     )
     args.results_dir.mkdir(parents=True, exist_ok=True)
     output_path = args.results_dir / f"analysis_{args.run_id}.json"

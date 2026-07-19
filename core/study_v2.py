@@ -27,6 +27,7 @@ MATH_SYSTEMS = (
     "escalate_structure",
     "escalate_sc",
 )
+CALIBRATION_FILENAME = "calibration_math500.json"
 
 
 def _read_checkpoint(path: Path) -> list[dict[str, Any]]:
@@ -71,6 +72,7 @@ class MathStudyExperiment:
         concurrency: int = 8,
         repeats: int = 1,
         budget_guard: BudgetGuard | None = None,
+        systems: Sequence[str] | None = None,
     ) -> None:
         if concurrency <= 0:
             raise ValueError("concurrency must be positive")
@@ -80,9 +82,18 @@ class MathStudyExperiment:
         self.results_dir = results_dir
         self.config = config
         self.repeats = repeats
+        requested_systems = tuple(systems) if systems is not None else MATH_SYSTEMS
+        if not requested_systems:
+            raise ValueError("at least one MATH system is required")
+        invalid_systems = set(requested_systems) - set(MATH_SYSTEMS)
+        if invalid_systems:
+            raise ValueError(f"unknown MATH systems: {', '.join(sorted(invalid_systems))}")
+        self.systems = tuple(name for name in MATH_SYSTEMS if name in requested_systems)
+        self.filtered_systems = systems is not None
         self.semaphore = asyncio.Semaphore(concurrency)
         self.budget_guard = budget_guard
         self.checkpoint_path = results_dir / f"checkpoint_{config.run_id}.jsonl"
+        self.calibration_path = results_dir / CALIBRATION_FILENAME
         self.ledger = Ledger(results_dir / f"ledger_{config.run_id}.jsonl")
         self._checkpoint_lock = asyncio.Lock()
         self._completed: dict[tuple[str, str, int], dict[str, Any]] = {}
@@ -91,7 +102,7 @@ class MathStudyExperiment:
         self.calibration: dict[str, Any] = {}
         results_dir.mkdir(parents=True, exist_ok=True)
         for row in _read_checkpoint(self.checkpoint_path):
-            if row.get("variant") in MATH_SYSTEMS and row.get("problem_id") is not None:
+            if row.get("variant") in self.systems and row.get("problem_id") is not None:
                 key = (row["variant"], str(row["problem_id"]), int(row.get("repeat", 0)))
                 self._completed[key] = row
 
@@ -345,6 +356,7 @@ class MathStudyExperiment:
             "output_tokens": sum(record.output_tokens for record in records),
             "latency_ms": sum(record.latency_ms for record in records),
             "component_costs": component_costs,
+            "problem": problem.problem,
             "level": problem.level,
             "subject": problem.subject,
             "escalated": escalated,
@@ -388,18 +400,108 @@ class MathStudyExperiment:
             "sc_budget_n": self.sc_budget_n,
             "escalate_sc_extra_samples": self.escalate_sc_extra_samples,
         }
+        self._persist_calibration(self.calibration, source_run_id=self.config.run_id)
+
+    def _persist_calibration(
+        self,
+        calibration: dict[str, Any],
+        *,
+        source_run_id: str,
+        source_results_file: str | None = None,
+    ) -> None:
+        calibration_model = calibration.get("model")
+        if calibration_model and calibration_model != self.provider.model:
+            raise ValueError(
+                f"Calibration model {calibration_model!r} does not match provider {self.provider.model!r}"
+            )
+        payload = {
+            **calibration,
+            "model": self.provider.model,
+            "source_run_id": source_run_id,
+        }
+        if source_results_file:
+            payload["source_results_file"] = source_results_file
+        if self.calibration_path.exists():
+            existing = json.loads(self.calibration_path.read_text(encoding="utf-8"))
+            existing_model = existing.get("model")
+            if not existing_model or existing_model == self.provider.model:
+                return
+            if self.provider.model.startswith("mock"):
+                return
+            if not str(existing_model).startswith("mock"):
+                raise ValueError(
+                    f"Refusing to replace calibration for {existing_model!r} with {self.provider.model!r}"
+                )
+        self.calibration_path.write_text(
+            json.dumps(payload, indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+
+    def _load_calibration(self) -> None:
+        if self.calibration_path.exists():
+            payload = json.loads(self.calibration_path.read_text(encoding="utf-8"))
+        else:
+            final_results_path = self.results_dir / "results_math500_final.json"
+            if not final_results_path.exists():
+                raise FileNotFoundError(
+                    "Filtered MATH systems require results/calibration_math500.json; "
+                    "run the complete MATH system matrix first"
+                )
+            final_results = json.loads(final_results_path.read_text(encoding="utf-8"))
+            payload = dict(final_results.get("study", {}).get("calibration", {}))
+            final_model = final_results.get("metadata", {}).get("model")
+            if final_model:
+                payload["model"] = final_model
+            if final_model and final_model != self.provider.model:
+                raise ValueError(
+                    f"Final-results model {final_model!r} does not match provider {self.provider.model!r}"
+                )
+            self._persist_calibration(
+                payload,
+                source_run_id="recovered-math500-final",
+                source_results_file=final_results_path.name,
+            )
+        saved_model = payload.get("model")
+        if saved_model and saved_model != self.provider.model:
+            raise ValueError(
+                f"Saved calibration model {saved_model!r} does not match provider {self.provider.model!r}"
+            )
+        if "calibration" in payload:
+            payload = dict(payload["calibration"])
+        required = set()
+        if "sc@budget" in self.systems:
+            required.add("sc_budget_n")
+        if "escalate_sc" in self.systems:
+            required.add("escalate_sc_extra_samples")
+        missing = required - set(payload)
+        if missing:
+            raise ValueError(f"Saved MATH calibration is missing: {', '.join(sorted(missing))}")
+        if "sc_budget_n" in payload:
+            self.sc_budget_n = int(payload["sc_budget_n"])
+        if "escalate_sc_extra_samples" in payload:
+            self.escalate_sc_extra_samples = int(payload["escalate_sc_extra_samples"])
+        self.calibration = {
+            key: value
+            for key, value in payload.items()
+            if key not in {"model", "source_run_id", "source_results_file"}
+        }
+        self.calibration["reused"] = True
 
     async def run(self, problems: list[MathProblem]) -> dict[str, Any]:
-        await self._calibrate(problems)
+        if self.filtered_systems:
+            if {"sc@budget", "escalate_sc"} & set(self.systems):
+                self._load_calibration()
+        else:
+            await self._calibrate(problems)
         for repeat in range(self.repeats):
             for problem in problems:
-                for name in MATH_SYSTEMS:
+                for name in self.systems:
                     await self._execute(name, problem, repeat)
         rows = [
             self._completed[(name, problem.problem_id, repeat)]
             for repeat in range(self.repeats)
             for problem in problems
-            for name in MATH_SYSTEMS
+            for name in self.systems
         ]
         return aggregate_math_results(
             rows,
@@ -408,6 +510,7 @@ class MathStudyExperiment:
             problem_count=len(problems),
             repeats=self.repeats,
             calibration=self.calibration,
+            systems=self.systems,
         )
 
 
@@ -419,6 +522,7 @@ def aggregate_math_results(
     problem_count: int,
     repeats: int,
     calibration: dict[str, Any],
+    systems: Sequence[str] = MATH_SYSTEMS,
 ) -> dict[str, Any]:
     output: dict[str, Any] = {
         "metadata": {
@@ -431,14 +535,14 @@ def aggregate_math_results(
         },
         "study": {
             "name": "math500",
-            "systems": list(MATH_SYSTEMS),
+            "systems": list(systems),
             "calibration": calibration,
         },
         "variants": {},
         "missingness": {},
         "scorer_breakdown": {},
     }
-    for name in MATH_SYSTEMS:
+    for name in systems:
         selected = [row for row in rows if row["variant"] == name]
         total = len(selected)
         correct = sum(bool(row["correct"]) for row in selected)
@@ -473,9 +577,10 @@ def aggregate_math_results(
                 for component, cost in sorted(components.items())
             },
         }
-    full_accuracy = output["variants"]["full"]["accuracy"]
-    for item in output["variants"].values():
-        item["accuracy_delta_vs_full"] = item["accuracy"] - full_accuracy
+    if "full" in output["variants"]:
+        full_accuracy = output["variants"]["full"]["accuracy"]
+        for item in output["variants"].values():
+            item["accuracy_delta_vs_full"] = item["accuracy"] - full_accuracy
 
     verdict_names = ("full", "sc@budget")
     by_name = {

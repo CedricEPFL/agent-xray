@@ -1,0 +1,236 @@
+{
+  "metadata": {
+    "ci_method": "Wilson 95% binomial interval",
+    "model": "gemini-3.1-flash-lite",
+    "repeat_count": 1,
+    "sample_size": 100,
+    "seed": 42,
+    "temperature": 0.7
+  },
+  "missingness": {
+    "-critique": {
+      "blocked": 0,
+      "failed": 0,
+      "truncated": 0
+    },
+    "-revise": {
+      "blocked": 0,
+      "failed": 0,
+      "truncated": 0
+    },
+    "-vote": {
+      "blocked": 0,
+      "failed": 0,
+      "truncated": 0
+    },
+    "cot@1": {
+      "blocked": 0,
+      "failed": 0,
+      "truncated": 0
+    },
+    "full": {
+      "blocked": 0,
+      "failed": 0,
+      "truncated": 0
+    },
+    "sc@3": {
+      "blocked": 0,
+      "failed": 0,
+      "truncated": 0
+    },
+    "sc@5": {
+      "blocked": 0,
+      "failed": 0,
+      "truncated": 0
+    }
+  },
+  "scorer_breakdown": {
+    "-critique": {
+      "exact_match": 100
+    },
+    "-revise": {
+      "exact_match": 100
+    },
+    "-vote": {
+      "exact_match": 100
+    },
+    "cot@1": {
+      "exact_match": 100
+    },
+    "full": {
+      "exact_match": 100
+    },
+    "sc@3": {
+      "exact_match": 100
+    },
+    "sc@5": {
+      "exact_match": 100
+    }
+  },
+  "study": {
+    "name": "gsm8k",
+    "systems": [
+      "full",
+      "-critique",
+      "-revise",
+      "-vote",
+      "cot@1",
+      "sc@3",
+      "sc@5"
+    ]
+  },
+  "variants": {
+    "-critique": {
+      "accuracy": 0.96,
+      "accuracy_delta_vs_full": 0.029999999999999916,
+      "ci": {
+        "level": 0.95,
+        "lower": 0.9016292856411208,
+        "upper": 0.9843366960084523
+      },
+      "correct": 96,
+      "cost_per_success_usd": 0.0026102526041666668,
+      "mean_cost_usd": 0.0025058425,
+      "mean_input_tokens": 1856.11,
+      "mean_latency_ms": 7515.450717094354,
+      "mean_output_tokens": 1361.21,
+      "n": 100,
+      "per_component_cost_share": {
+        "generate": 0.27986994394100984,
+        "revise": 0.5343093191212137,
+        "vote": 0.1858207369377764
+      }
+    },
+    "-revise": {
+      "accuracy": 0.93,
+      "accuracy_delta_vs_full": 0.0,
+      "ci": {
+        "level": 0.95,
+        "lower": 0.8625048526092651,
+        "upper": 0.9656807389327273
+      },
+      "correct": 93,
+      "cost_per_success_usd": 0.0026244327956989246,
+      "mean_cost_usd": 0.0024407225,
+      "mean_input_tokens": 2160.95,
+      "mean_latency_ms": 7552.555540003814,
+      "mean_output_tokens": 1266.99,
+      "n": 100,
+      "per_component_cost_share": {
+        "critique": 0.4720128978202153,
+        "generate": 0.290618863881494,
+        "vote": 0.2373682382982908
+      }
+    },
+    "-vote": {
+      "accuracy": 0.96,
+      "accuracy_delta_vs_full": 0.029999999999999916,
+      "ci": {
+        "level": 0.95,
+        "lower": 0.9016292856411208,
+        "upper": 0.9843366960084523
+      },
+      "correct": 96,
+      "cost_per_success_usd": 0.0010775911458333334,
+      "mean_cost_usd": 0.0010344875000000001,
+      "mean_input_tokens": 766.13,
+      "mean_latency_ms": 3237.021310017444,
+      "mean_output_tokens": 561.97,
+      "n": 100,
+      "per_component_cost_share": {
+        "critique": 0.36237025580299415,
+        "generate": 0.2305586099397044,
+        "revise": 0.4070711342573014
+      }
+    },
+    "cot@1": {
+      "accuracy": 0.94,
+      "accuracy_delta_vs_full": 0.009999999999999898,
+      "ci": {
+        "level": 0.95,
+        "lower": 0.8752318455410406,
+        "upper": 0.9722138760368118
+      },
+      "correct": 94,
+      "cost_per_success_usd": 0.00025086170212765957,
+      "mean_cost_usd": 0.00023581,
+      "mean_input_tokens": 87.52,
+      "mean_latency_ms": 953.2055789837614,
+      "mean_output_tokens": 142.62,
+      "n": 100,
+      "per_component_cost_share": {
+        "generate": 0.9999999999999999
+      }
+    },
+    "full": {
+      "accuracy": 0.93,
+      "accuracy_delta_vs_full": 0.0,
+      "ci": {
+        "level": 0.95,
+        "lower": 0.8625048526092651,
+        "upper": 0.9656807389327273
+      },
+      "correct": 93,
+      "cost_per_success_usd": 0.0038542634408602152,
+      "mean_cost_usd": 0.0035844650000000002,
+      "mean_input_tokens": 3058.82,
+      "mean_latency_ms": 10844.762841057964,
+      "mean_output_tokens": 1879.84,
+      "n": 100,
+      "per_component_cost_share": {
+        "critique": 0.3265989485181192,
+        "generate": 0.1986154140157597,
+        "revise": 0.35818176492168297,
+        "vote": 0.11660387254443835
+      }
+    },
+    "sc@3": {
+      "accuracy": 0.95,
+      "accuracy_delta_vs_full": 0.019999999999999907,
+      "ci": {
+        "level": 0.95,
+        "lower": 0.8882495307680808,
+        "upper": 0.9784563208456319
+      },
+      "correct": 95,
+      "cost_per_success_usd": 0.0007510421052631578,
+      "mean_cost_usd": 0.00071349,
+      "mean_input_tokens": 262.56,
+      "mean_latency_ms": 2839.5953399781138,
+      "mean_output_tokens": 431.9,
+      "n": 100,
+      "per_component_cost_share": {
+        "generate": 1.0000000000000002
+      }
+    },
+    "sc@5": {
+      "accuracy": 0.95,
+      "accuracy_delta_vs_full": 0.019999999999999907,
+      "ci": {
+        "level": 0.95,
+        "lower": 0.8882495307680808,
+        "upper": 0.9784563208456319
+      },
+      "correct": 95,
+      "cost_per_success_usd": 0.0012433947368421052,
+      "mean_cost_usd": 0.0011812250000000002,
+      "mean_input_tokens": 437.6,
+      "mean_latency_ms": 4746.953143980354,
+      "mean_output_tokens": 714.55,
+      "n": 100,
+      "per_component_cost_share": {
+        "generate": 0.9999999999999998
+      }
+    }
+  },
+  "verdict": {
+    "baseline_accuracy": 0.95,
+    "baseline_mean_cost_usd": 0.0011812250000000002,
+    "cost_matched_variant": "sc@5",
+    "full_accuracy": 0.93,
+    "full_mean_cost_usd": 0.0035844650000000002,
+    "gain_over_cost_matched_sc": -0.019999999999999907,
+    "gain_percentage_points": -1.9999999999999907,
+    "verdict_n": 100
+  }
+}

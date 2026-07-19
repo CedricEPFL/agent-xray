@@ -177,6 +177,7 @@ class Experiment:
             "output_tokens": sum(record.output_tokens for record in records),
             "latency_ms": sum(record.latency_ms for record in records),
             "component_costs": component_costs,
+            "problem": problem.question,
         }
 
     def _append_checkpoint(self, row: Mapping[str, Any]) -> None:

@@ -9,7 +9,16 @@ from core.analysis import main, mcnemar_exact, paired_bootstrap_ci, primary_cont
 TEST_DIR = Path(__file__).parent
 
 
-def _row(variant, problem_id, *, level, correct, method="sympy_equiv", repeat=0):
+def _row(
+    variant,
+    problem_id,
+    *,
+    level,
+    correct,
+    method="sympy_equiv",
+    repeat=0,
+    escalated=False,
+):
     return {
         "variant": variant,
         "problem_id": problem_id,
@@ -17,6 +26,7 @@ def _row(variant, problem_id, *, level, correct, method="sympy_equiv", repeat=0)
         "level": level,
         "correct": correct,
         "scoring_method": method,
+        "escalated": escalated,
     }
 
 
@@ -95,3 +105,30 @@ def test_analysis_cli_writes_json(capsys):
     finally:
         checkpoint.unlink(missing_ok=True)
         output_path.unlink(missing_ok=True)
+
+
+def test_primary_contrast_can_restrict_to_escalated_pairs():
+    rows = [
+        _row("escalate_structure", "no-gate", level=4, correct=True),
+        _row("escalate_sc", "no-gate", level=4, correct=False),
+        _row("escalate_structure", "a-gated", level=4, correct=True, escalated=True),
+        _row("escalate_sc", "a-gated", level=4, correct=False),
+        _row("escalate_structure", "b-gated", level=5, correct=False),
+        _row("escalate_sc", "b-gated", level=5, correct=True, escalated=True),
+    ]
+    checkpoint = _write_checkpoint(TEST_DIR, "_analysis_escalated", rows)
+    try:
+        result = primary_contrast(
+            TEST_DIR,
+            "_analysis_escalated",
+            system_a="escalate_structure",
+            system_b="escalate_sc",
+            escalated_only=True,
+        )
+        assert result["escalated_only"] is True
+        assert result["n_pairs"] == 2
+        assert result["discordant"] == {"b": 1, "c": 1}
+        assert result["missingness"]["paired_before_escalation_filter"] == 3
+        assert result["missingness"]["not_escalated"] == 1
+    finally:
+        checkpoint.unlink(missing_ok=True)
